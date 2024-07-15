@@ -1,0 +1,90 @@
+#include <LiquidCrystal_I2C.h>
+#include <RTClib.h>
+#include <Wire.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+RTC_DS3231 rtc;
+char diaDaSemana[7][12] = {"domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"};
+int R_PWM = 3;
+bool motorRunning = false;
+unsigned long motorStartTime = 0;
+void ligarmotor();
+void desligarmotor();
+void horario();
+void setup() 
+{
+  Serial.begin(9600);
+  rtc.begin();
+  lcd.init();
+  lcd.clear();
+  lcd.backlight();
+  pinMode(R_PWM, OUTPUT);
+  digitalWrite(R_PWM, LOW); 
+}
+void loop() 
+{
+  DateTime now = rtc.now();
+  lcd.setCursor(0, 1);
+  lcd.print(rtc.now().hour());
+  lcd.print(":");
+  lcd.print(rtc.now().minute());
+  lcd.print(":");
+  lcd.print(rtc.now().second());
+  lcd.setCursor(0, 0);
+  lcd.print(rtc.now().day());
+  lcd.print("/");
+  lcd.print(rtc.now().month());
+  lcd.print("/");
+  lcd.print(rtc.now().year());
+  if (motorRunning) 
+  {
+    lcd.setCursor(11, 0);
+    lcd.print("MOTOR");
+    lcd.setCursor(10, 1);
+    lcd.print("LIGADO");
+  }
+  else 
+  {
+    lcd.setCursor(11, 0);
+    lcd.print("      ");
+    lcd.setCursor(10, 1);
+    lcd.print("      ");
+  }
+  delay(1000);
+  lcd.clear();
+  Serial.print(diaDaSemana[now.dayOfTheWeek()]);
+  Serial.print(now.day(), DEC);
+  Serial.print('/');
+  Serial.print(now.month(), DEC);
+  Serial.print('/');
+  Serial.print(now.year(), DEC);
+  Serial.print(now.hour(), DEC);
+  Serial.print(':');
+  Serial.print(now.minute(), DEC);
+  Serial.print(':');
+  Serial.print(now.second(), DEC);
+  Serial.println();
+  if ((now.hour() == 0 || now.hour() == 6 || now.hour() == 12 || now.hour() == 22) &&
+      now.minute() == 58 && now.second() == 0 && (now.dayOfTheWeek() >= 0 && now.dayOfTheWeek() <= 6)) 
+  {
+    if (!motorRunning) 
+    {
+      ligarmotor();
+    }
+  }
+  if (motorRunning && (millis() - motorStartTime >= 10000)) 
+  {
+    desligarmotor();
+  }
+}
+void ligarmotor() 
+{
+  digitalWrite(R_PWM, HIGH);  
+  motorStartTime = millis();
+  motorRunning = true;
+}
+void desligarmotor() 
+{
+  digitalWrite(R_PWM, LOW); 
+  motorRunning = false;
+}
